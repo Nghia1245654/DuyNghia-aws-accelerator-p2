@@ -12,24 +12,24 @@ Bạn có thể lưu trữ cấu hình trong hệ thống quản lý phiên bả
 Quản lý hạ tầng
 Terraform dùng providers để kết nối với API của các nền tảng như Amazon Web Services, Microsoft Azure, Google Cloud Platform…
 Có hơn 1000 providers, có thể tự viết nếu chưa có.
-Tìm providers trong Terraform Registry.
-🔹 Chuẩn hóa workflow
-Hạ tầng được chia thành resource (VM, network…).
-Gom nhiều resource thành module để tái sử dụng.
-Dùng ngôn ngữ declarative (mô tả trạng thái mong muốn).
-Terraform tự xử lý dependency giữa các resource.
-🔹 Quy trình deploy
-Scope – Xác định hạ tầng
-Author – Viết config
-Initialize – Cài plugin
-Plan – Xem trước thay đổi
-Apply – Áp dụng thay đổi
-🔹 Theo dõi hạ tầng
-Terraform dùng state file làm “source of truth”.
-So sánh state với config để quyết định thay đổi.
-🔹 Cộng tác
-Dùng remote state để làm việc nhóm.
-HCP Terraform hỗ trợ:
-Chia sẻ state an toàn
-Tránh xung đột khi nhiều người cùng sửa
-Tích hợp với VCS như GitHub, GitLab để tự động cập nhật hạ tầng khi commit code.
+Tìm providers trong Terraform Registry. 
+🔹 Chuẩn hóa workflow 
+Hạ tầng được chia thành resource (VM, network…).   
+Gom nhiều resource thành module để tái sử dụng.   
+Dùng ngôn ngữ declarative (mô tả trạng thái mong muốn).   
+Terraform tự xử lý dependency giữa các resource.   
+🔹 Quy trình deploy   
+Scope – Xác định hạ tầng    
+Author – Viết config    
+Initialize – Cài plugin     
+Plan – Xem trước thay đổi     
+Apply – Áp dụng thay đổi     
+🔹 Theo dõi hạ tầng     
+Terraform dùng state file làm “source of truth”.    
+So sánh state với config để quyết định thay đổi.    
+🔹 Cộng tác   
+Dùng remote state để làm việc nhóm.   
+HCP Terraform hỗ trợ:    
+Chia sẻ state an toàn   
+Tránh xung đột khi nhiều người cùng sửa   
+Tích hợp với VCS như GitHub, GitLab để tự động cập nhật hạ tầng khi commit code.   
