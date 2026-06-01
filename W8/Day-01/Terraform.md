@@ -1,0 +1,2 @@
+ Terraform
+ là một công cụ mã nguồn mở giúp xây dựng, thay đổi và quản lý cơ sở hạ tầng an toàn, hiệu quả dưới dạng mã (Infrastructure as Code - IaC). Terraform cho phép bạn định nghĩa và cung cấp cơ sở hạ tầng bằng cách sử dụng một ngôn ngữ cấu hình cao cấp. Nó hỗ trợ nhiều nhà cung cấp dịch vụ đám mây như AWS, Azure, Google Cloud và nhiều nhà cung cấp khác, cũng như các dịch vụ nội bộ.
