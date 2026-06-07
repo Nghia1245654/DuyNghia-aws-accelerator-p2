@@ -1,0 +1,115 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+exec > >(tee /var/log/bootstrap.log | logger -t bootstrap -s 2>/dev/console) 2>&1
+
+echo "[bootstrap] starting" 
+
+export DEBIAN_FRONTEND=noninteractive
+apt-get update -y
+apt-get install -y --no-install-recommends \
+  ca-certificates curl gnupg lsb-release apt-transport-https \
+  docker.io conntrack socat unzip awscli
+
+systemctl enable --now docker
+usermod -aG docker ubuntu || true
+
+# kubectl
+curl -fsSLo /usr/local/bin/kubectl "https://dl.k8s.io/release/$(curl -fsSL https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
+chmod +x /usr/local/bin/kubectl
+
+# minikube
+curl -fsSLo /usr/local/bin/minikube https://storage.googleapis.com/minikube/releases/latest/minikube-linux-amd64
+chmod +x /usr/local/bin/minikube
+
+mkdir -p /opt/site
+export AWS_REGION="${aws_region}"
+export AWS_DEFAULT_REGION="${aws_region}"
+aws s3 sync "s3://${bucket_name}/site" /opt/site --region "${aws_region}"
+
+cat >/opt/site/Dockerfile <<'DOCKERFILE'
+FROM nginx:alpine
+COPY index.html /usr/share/nginx/html/index.html
+COPY style.css /usr/share/nginx/html/style.css
+COPY imgs /usr/share/nginx/html/imgs
+DOCKERFILE
+
+docker build -t static-web:1 /opt/site
+
+# Start minikube (docker driver) and expose the fixed NodePort on the EC2 host.
+# The --ports flag publishes the port from the minikube node container -> EC2 host.
+su - ubuntu -c "minikube start --driver=docker --ports=0.0.0.0:${nodeport}:${nodeport} --force"
+su - ubuntu -c "minikube addons enable metrics-server"
+
+# Make the locally built image available inside minikube
+su - ubuntu -c "minikube image load static-web:1"
+
+cat >/home/ubuntu/app.yaml <<'YAML'
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: static-web
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: static-web
+  template:
+    metadata:
+      labels:
+        app: static-web
+    spec:
+      containers:
+        - name: web
+          image: static-web:1
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 80
+          resources:
+            requests:
+              cpu: "50m"
+              memory: "64Mi"
+            limits:
+              cpu: "100m"
+              memory: "128Mi"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: static-web
+spec:
+  type: NodePort
+  selector:
+    app: static-web
+  ports:
+    - name: http
+      port: 80
+      targetPort: 80
+      nodePort: ${nodeport}
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: static-web-hpa
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: static-web
+  minReplicas: 2
+  maxReplicas: 5
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: 50
+YAML
+
+chown ubuntu:ubuntu /home/ubuntu/app.yaml
+
+su - ubuntu -c "kubectl apply -f /home/ubuntu/app.yaml"
+su - ubuntu -c "kubectl rollout status deployment/static-web --timeout=240s"
+
+echo "[bootstrap] done"
