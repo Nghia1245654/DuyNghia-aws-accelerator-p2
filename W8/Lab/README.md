@@ -30,37 +30,35 @@ graph TD
     
     subgraph VPC [AWS Default VPC]
         ALB -- "Forward (Port 30080)" --> SG_EC2[Security Group EC2<br/>Chỉ mở Port 30080 từ ALB SG]
-        
-        subgraph EC2_Instance [AWS EC2 Instance]
-            SG_EC2 --> Docker[Docker Engine]
-            
-            subgraph Minikube_Container [Minikube Container - Docker Driver]
-                direction TB
-                subgraph K8s_Cluster [Kubernetes Cluster]
-                    K8s_SVC[K8s Service: static-web<br/>Type: NodePort 30080]
-                    K8s_Deployment[K8s Deployment: static-web<br/>Replicas: 2-5]
-                    HPA[Horizontal Pod Autoscaler<br/>CPU Target: 50%]
-                    MetricsServer[Metrics Server Addon]
-                    
-                    K8s_SVC -- "TargetPort 80" --> K8s_Pods[K8s Pods: static-web-xxx]
-                    K8s_Deployment --> K8s_Pods
-                    HPA -.-> |Monitor/Scale| K8s_Deployment
-                    MetricsServer -.-> |Cung cấp CPU metrics| HPA
-                end
-            end
-            
-            Docker -- "Map Port 30080:30080" --> Minikube_Container
-        end
+        SG_EC2 --> EC2_Host[AWS EC2 Instance<br/>Ubuntu 22.04 LTS]
     end
     
-    subgraph Storage [AWS Storage & Security]
-        S3[(AWS S3 Bucket<br/>Lưu trữ web assets)]
+    subgraph K8s [Môi trường Kubernetes trong EC2]
+        Docker[Docker Engine]
+        Minikube[Minikube Container<br/>Docker Driver]
+        K8s_SVC[K8s Service: static-web<br/>NodePort: 30080]
+        K8s_Deploy[K8s Deployment: static-web<br/>Replicas: 2-5]
+        K8s_Pods[K8s Pods: static-web]
+        HPA[Horizontal Pod Autoscaler<br/>CPU Target: 50%]
+        MetricsServer[Metrics Server Addon]
+        
+        Docker -- "Expose Port 30080:30080" --> Minikube
+        Minikube --> K8s_SVC
+        K8s_SVC -- "Forward to Port 80" --> K8s_Pods
+        K8s_Deploy --> K8s_Pods
+        HPA -.-> |Tự động scale| K8s_Deploy
+        MetricsServer -.-> |Cung cấp chỉ số CPU| HPA
+    end
+    
+    subgraph AWS_Storage [AWS Storage & Security]
+        S3[(AWS S3 Bucket<br/>Lưu trữ Web Assets)]
         IAM[IAM Instance Profile<br/>Quyền S3 Read-Only]
     end
     
-    Terraform[Terraform Local] -- "1. Uploads index.html, style.css, imgs" --> S3
-    EC2_Instance -- "2. Sync assets (aws s3 sync)" --> S3
-    EC2_Instance -.-> |Xác thực IAM Role| IAM
+    EC2_Host --> Docker
+    Terraform[Terraform Local] -- "1. Upload index.html, style.css, imgs" --> S3
+    EC2_Host -- "2. Sync assets (aws s3 sync)" --> S3
+    EC2_Host -.-> |Xác thực IAM Role| IAM
 ```
 
 ---
